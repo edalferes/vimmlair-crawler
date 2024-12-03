@@ -1,25 +1,19 @@
 import asyncio
 from dataclasses import asdict
-from src.data_extractor import GameDataExtractor
-from src.vault_page_crawler import VaultPageCrawler
+from src.game_data_extractor import GameDataExtractor
+from src.console_data_extractor import ConsoleDataExtractor
 
 
 async def main():
-    # url = 'https://vimm.net/vault/7461'
-    # extractor = GameDataExtractor(url)
-    # game_data = await extractor.request_site()
 
-    url = 'https://vimm.net/vault'
-    crawler = VaultPageCrawler(url)
-    consoles, handhelds = await crawler.fetch_page()
+    url_console = 'https://vimm.net/vault'
+    crawler = ConsoleDataExtractor(url_console)
+    consoles = await crawler.request_site()
 
-    print("Consoles:")
-    for console in consoles:
-        print(f"{console['name']} ({console['year']}): {console['url']}")
+    url_game = 'https://vimm.net/vault/8638'
+    extractor = GameDataExtractor(url_game)
+    game_data = await extractor.request_site()
 
-    print("\nHandhelds:")
-    for handheld in handhelds:
-        print(f"{handheld['name']} ({handheld['year']}): {handheld['url']}")
 
 if __name__ == '__main__':
     asyncio.run(main())
