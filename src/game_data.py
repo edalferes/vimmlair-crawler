@@ -12,10 +12,8 @@ class GameData:
     Graphics: float = None
     Sound: float = None
     Gameplay: float = None
-    Overall: float = None
-    CRC: str = None
-    Verified: str = None
     Format: str = None
+    Version: str = None
     GameName: str = None
     Console: str = None
     CanBeDownloaded: bool = False

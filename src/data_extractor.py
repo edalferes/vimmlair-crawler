@@ -74,13 +74,23 @@ class GameDataExtractor:
                         'Graphics': 'Graphics',
                         'Sound': 'Sound',
                         'Gameplay': 'Gameplay',
-                        'Overall': 'Overall',
-                        'CRC': 'CRC',
-                        'Verified': 'Verified',
-                        'Format': 'Format'
+                        'Format': 'Format',
+                        'Version': 'Version',
                     }
+
                     if key in key_map:
+                        # Clean up the value if it's the Version to ensure no redundant or newline characters
+                        if key == 'Version':
+                            # This assumes the version is always followed by spaces and newline, keeping the first part only
+                            # Adjust based on actual content observed
+                            value = value.split()[0]
                         data[key_map[key]] = value
+
                         if key in ['Graphics', 'Sound', 'Gameplay', 'Overall']:
-                            data[key_map[key]] = float(value.split()[0])
+                            # Convert these values to float, handle exceptions if conversion is not possible
+                            try:
+                                data[key_map[key]] = float(value.split()[0])
+                            except ValueError:
+                                pass  # Handle or log the error as necessary
+
         return data
