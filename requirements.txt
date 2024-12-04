@@ -4,3 +4,4 @@ aiohttp
 mongoengine==0.29.1
 pydantic==2.9.2
 pydantic-settings==2.6.0
+selenium

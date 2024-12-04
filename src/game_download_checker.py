@@ -1,5 +1,6 @@
 import requests
 import os
+import time
 from urllib.parse import urlparse
 from mongoengine import connect
 from src.config import Config
@@ -36,7 +37,7 @@ class GameDownloadChecker:
             # Simula a verificação se o jogo pode ser baixado
             if self.can_download_game(game):
                 print(f"Game {game['GameName']} is downloadable.")
-                # Aqui é onde você colocaria o código para baixar o jogo, que será deixado como boilerplate
+                # Aqui é onde você colocaria o código para baixar o jogo
                 self.download_game(game)
             else:
                 print(f"Game {game['GameName']} is NOT downloadable.")
@@ -44,10 +45,8 @@ class GameDownloadChecker:
     def get_games_from_console(self, console_name):
         """
         Recupera os jogos associados ao console do banco de dados.
-        Este método pode ser ajustado para buscar os dados do banco de dados MongoDB ou outro meio.
+        Este método pode ser ajustado para buscar os dados de acordo com a sua implementação.
         """
-        # Este é apenas um exemplo de como recuperar os dados de jogos
-        # Você deve ajustar este método para obter os dados de acordo com a sua implementação
         from src.game_data_extractor import GameDataDocument
 
         # Busca jogos para o console no banco de dados
@@ -72,20 +71,18 @@ class GameDownloadChecker:
         """
         # Obtém o mediaId e DownloadURL armazenados no banco
         media_id = game.get('DownloadParams', {}).get('mediaId')
-        download_url = game.get('DownloadURL')
+        download_url = f"https://download2.vimm.net/?mediaId={media_id}"
 
-        if not media_id or not download_url:
+        if not media_id:
             print(
-                f"Não foi possível encontrar o mediaId ou a URL de download para o jogo {game['GameName']}.")
+                f"Não foi possível encontrar o mediaId para o jogo {game['GameName']}.")
             return
 
-        # Usa o nome do jogo como o nome do arquivo
-        game_name = game.get('GameName')
-        # Ajuste a extensão conforme necessário (ex: .iso, .zip, .rom, etc.)
-        filename = f"{game_name}.zip"
+        # Obtém o nome do arquivo a partir do nome do jogo
+        filename = f"{game['GameName']}.zip"  # Ou o formato que você preferir
 
         # Diretório onde a ROM será salva
-        save_directory = 'roms'  # Altere para o diretório desejado
+        save_directory = 'roms'  # Alterar conforme necessário
         if not os.path.exists(save_directory):
             os.makedirs(save_directory)
 
@@ -96,28 +93,29 @@ class GameDownloadChecker:
             print(f"Arquivo {filename} já existe. Pulando download.")
             return
 
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+            'Referer': f'https://vimm.net/vault/{game["Console"]}',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+            'Accept-Encoding': 'gzip, deflate, br, zstd',
+            'Accept-Language': 'en-US,en;q=0.9,pt;q=0.8',
+            'Connection': 'keep-alive',
+            'Cookie': 'your_cookies_here',  # Adicione os cookies apropriados, se necessário
+        }
+
         try:
             print(f"Iniciando download de {filename}...")
 
-            # Envia a requisição POST para o servidor de download
-            post_url = "https://download2.vimm.net/"
-            post_data = {
-                'mediaId': media_id,
-                'alt': '0',  # Alt flag, conforme observado no código HTML
-            }
-
-            print(f"Enviando requisição de download para {filename}...")
-            post_response = requests.post(
-                post_url, data=post_data, stream=True)
-            post_response.raise_for_status()
+            # Realiza o download diretamente do link
+            response = requests.get(download_url, headers=headers, stream=True)
+            response.raise_for_status()  # Verifica se a requisição foi bem-sucedida
 
             # Salva o arquivo no diretório
             with open(save_path, 'wb') as file:
-                for chunk in post_response.iter_content(chunk_size=8192):
+                for chunk in response.iter_content(chunk_size=8192):
                     file.write(chunk)
 
-            print(
-                f"Download de {filename} concluído e salvo em {save_path}.")
+            print(f"Download de {filename} concluído e salvo em {save_path}.")
 
         except requests.exceptions.RequestException as e:
-            print(f"Erro ao baixar {filename}: {e}")
+            print(f"Erro ao baixar {game['GameName']}: {e}")
