@@ -10,7 +10,6 @@ config = Config()
 connect('game_database', host=config.database_url)
 
 
-# Apenas a classe GameDataDocument, sem a necessidade de GameData (dataclass)
 class GameDataDocument(Document):
     # Campos para representar os dados de jogos
     Region = StringField(required=False)
@@ -21,13 +20,15 @@ class GameDataDocument(Document):
     Graphics = FloatField(required=False)
     Sound = FloatField(required=False)
     Gameplay = FloatField(required=False)
-    Format = StringField(required=False)
+    Format = StringField(required=False)  # Armazenando o formato do download
     Version = StringField(required=False)
     GameName = StringField(required=False, unique=True)
     Console = StringField(required=False)
     CanBeDownloaded = BooleanField(required=False, default=False)
     DownloadURL = StringField(required=False)
     DownloadParams = DictField(required=False)
+    # Armazenando o tamanho do download
+    DownloadSize = StringField(required=False)
 
     meta = {
         'collection': 'games',
@@ -55,7 +56,8 @@ class GameDataDocument(Document):
             "Console": self.Console,
             "CanBeDownloaded": self.CanBeDownloaded,
             "DownloadURL": self.DownloadURL,
-            "DownloadParams": self.DownloadParams
+            "DownloadParams": self.DownloadParams,
+            "DownloadSize": self.DownloadSize
         }
 
 
@@ -103,8 +105,12 @@ class GameDataExtractor:
                     download_params[input_tag['name']
                                     ] = input_tag.get('value', '')
 
-        # Extract table data
+        # Extract table data (including format and size)
         table_data = self.extract_table_data(soup)
+
+        # Extract download size and format (from the HTML)
+        download_size = self.extract_download_size(soup)
+        download_format = self.extract_download_format(soup)
 
         # Salve todos os dados no modelo GameDataDocument
         game_data = GameDataDocument(
@@ -119,7 +125,9 @@ class GameDataExtractor:
             Console=console_name,
             CanBeDownloaded=download_possible,
             DownloadURL=download_url,
-            DownloadParams=download_params
+            DownloadParams=download_params,
+            DownloadSize=download_size,
+            Format=download_format  # Armazenando o formato
         )
         return game_data
 
@@ -159,6 +167,32 @@ class GameDataExtractor:
                                 pass  # Handle or log the error as necessary
 
         return data
+
+    def extract_download_size(self, soup):
+        """
+        Extracts the download size from the HTML content.
+        """
+        try:
+            size_element = soup.find('td', id='dl_size')
+            if size_element:
+                return size_element.text.strip()
+        except Exception as e:
+            print(f"Erro ao extrair o tamanho do download: {e}")
+        return None
+
+    def extract_download_format(self, soup):
+        """
+        Extracts the download format (e.g., .wbfs, .rvz) from the HTML content.
+        """
+        try:
+            format_element = soup.find('select', id='dl_format')
+            if format_element:
+                selected_option = format_element.find('option', selected=True)
+                if selected_option:
+                    return selected_option.text.strip()
+        except Exception as e:
+            print(f"Erro ao extrair o formato de download: {e}")
+        return None
 
     def save_to_mongodb(self, game_data):
         """

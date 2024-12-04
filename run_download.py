@@ -5,9 +5,9 @@ from src.game_download_checker import GameDownloadChecker
 async def main():
     # Aqui você passa os dados do console, que podem vir de um banco de dados ou de algum scraping anterior
     console_data = {
-        'name': 'Atari 2600',
-        'url': 'https://vimm.net/vault/Atari2600',
-        'year': '1977',
+        'name': 'Wii',
+        'url': 'https://vimm.net/vault/Wii',
+        'year': '2006',
         'type': 'Console'
     }
 
