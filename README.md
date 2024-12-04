@@ -92,13 +92,9 @@ To run the project, you need:
    Run the following command to start the game data extraction process:
 
    ```bash
-   python src/main.py
+   python run_inflate.py # To inflate the downloaded roms
+   python run_download.py # To download the roms
    ```
-
-   This will start the crawler, which will:
-   - Scrape console data from Vimm's Lair.
-   - Scrape game data for each console.
-   - Download the games (if downloadable) and save them in the `roms/<console>` folder.
    
 4. **Access MongoDB**:
    You can view and manage the MongoDB data using MongoDB Express. It is accessible on [http://localhost:8081](http://localhost:8081).
