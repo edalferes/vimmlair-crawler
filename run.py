@@ -8,11 +8,7 @@ async def main():
 
     url_console = 'https://vimm.net/vault'
     crawler = ConsoleDataExtractor(url_console)
-    consoles = await crawler.request_site()
-
-    url_game = 'https://vimm.net/vault/8638'
-    extractor = GameDataExtractor(url_game)
-    game_data = await extractor.request_site()
+    await crawler.request_site()
 
 
 if __name__ == '__main__':

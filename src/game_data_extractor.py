@@ -1,34 +1,18 @@
 import aiohttp
 import base64
 from bs4 import BeautifulSoup
-from mongoengine import connect, NotUniqueError, Document, StringField, FloatField, BooleanField, DictField
-from dataclasses import dataclass, field
-from typing import Dict
-
-
+from mongoengine import connect, Document, StringField, FloatField, BooleanField, DictField, NotUniqueError
 from src.config import Config
 
 
-@dataclass
-class GameData():
-    Region: str = None
-    Players: str = None
-    Year: str = None
-    Publisher: str = None
-    Serial: str = None
-    Graphics: float = None
-    Sound: float = None
-    Gameplay: float = None
-    Format: str = None
-    Version: str = None
-    GameName: str = None
-    Console: str = None
-    CanBeDownloaded: bool = False
-    DownloadURL: str = None
-    DownloadParams: Dict[str, str] = field(default_factory=dict)
+# Configuração para conexão com o banco de dados MongoDB
+config = Config()
+connect('game_database', host=config.database_url)
 
 
+# Apenas a classe GameDataDocument, sem a necessidade de GameData (dataclass)
 class GameDataDocument(Document):
+    # Campos para representar os dados de jogos
     Region = StringField(required=False)
     Players = StringField(required=False)
     Year = StringField(required=False)
@@ -39,7 +23,6 @@ class GameDataDocument(Document):
     Gameplay = FloatField(required=False)
     Format = StringField(required=False)
     Version = StringField(required=False)
-    # Adiciona o índice único
     GameName = StringField(required=False, unique=True)
     Console = StringField(required=False)
     CanBeDownloaded = BooleanField(required=False, default=False)
@@ -53,9 +36,27 @@ class GameDataDocument(Document):
         ]
     }
 
-
-config = Config()
-connect('game_database', host=config.database_url)
+    def to_dict(self):
+        """
+        Converte o documento para um dicionário.
+        """
+        return {
+            "Region": self.Region,
+            "Players": self.Players,
+            "Year": self.Year,
+            "Publisher": self.Publisher,
+            "Serial": self.Serial,
+            "Graphics": self.Graphics,
+            "Sound": self.Sound,
+            "Gameplay": self.Gameplay,
+            "Format": self.Format,
+            "Version": self.Version,
+            "GameName": self.GameName,
+            "Console": self.Console,
+            "CanBeDownloaded": self.CanBeDownloaded,
+            "DownloadURL": self.DownloadURL,
+            "DownloadParams": self.DownloadParams
+        }
 
 
 class GameDataExtractor:
@@ -105,10 +106,24 @@ class GameDataExtractor:
         # Extract table data
         table_data = self.extract_table_data(soup)
 
-        # Join all data
-        game_data = GameData(**table_data, GameName=game_name, Console=console_name,
-                             CanBeDownloaded=download_possible, DownloadURL=download_url,
-                             DownloadParams=download_params)
+        # Salve todos os dados no modelo GameDataDocument
+        game_data = GameDataDocument(
+            Region=table_data.get('Region'),
+            Players=table_data.get('Players'),
+            Year=table_data.get('Year'),
+            Publisher=table_data.get('Publisher'),
+            Serial=table_data.get('Serial'),
+            Graphics=table_data.get('Graphics'),
+            Sound=table_data.get('Sound'),
+            Gameplay=table_data.get('Gameplay'),
+            Format=table_data.get('Format'),
+            Version=table_data.get('Version'),
+            GameName=game_name,
+            Console=console_name,
+            CanBeDownloaded=download_possible,
+            DownloadURL=download_url,
+            DownloadParams=download_params
+        )
         return game_data
 
     def extract_table_data(self, soup):
@@ -163,13 +178,12 @@ class GameDataExtractor:
 
             if existing_game:
                 # Atualiza o jogo com os novos dados
-                existing_game.update(**game_data.__dict__)
+                existing_game.update(**game_data.to_dict())
                 print(
                     f"Game data for '{game_data.GameName}' updated in MongoDB.")
             else:
                 # Se não existe, cria e salva o documento
-                # Convert the dataclass to a dict and use it
-                game_doc = GameDataDocument(**game_data.__dict__)
+                game_doc = game_data
                 game_doc.save()
                 print(f"Game data saved to MongoDB: {game_data.GameName}")
 
