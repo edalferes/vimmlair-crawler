@@ -1,7 +1,7 @@
 
-# Vimm's Lair Game Crawler
+# Vimm's Lair Crawler
 
-This project is a web crawler designed to extract and download game data from Vimm's Lair. It leverages asynchronous operations and web scraping techniques to gather information about video game consoles, their games, and game download links. The extracted data is saved in a MongoDB database for further processing.
+This project is a web crawler designed to extract and download game data from [Vimm's Lair](https://https://vimm.net/). It leverages asynchronous operations and web scraping techniques to gather information about video game consoles, their games, and game download links. The extracted data is saved in a MongoDB database for further processing.
 
 ## Features
 - Scrapes console and handheld data from Vimm's Lair.
