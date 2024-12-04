@@ -1,6 +1,4 @@
 import asyncio
-from dataclasses import asdict
-from src.game_data_extractor import GameDataExtractor
 from src.console_data_extractor import ConsoleDataExtractor
 
 
