@@ -8,13 +8,13 @@ from src.config import Config
 class ConsoleDataDocument(Document):
     name = StringField(required=True)
     url = StringField(required=True)
-    year = StringField(required=False)  # Ano do console
+    year = StringField(required=False)
     type = StringField(required=True, choices=["Console", "Handheld"])
 
     meta = {
         'collection': 'consoles',
         'indexes': [
-            'name',  # Garantir que o nome seja único
+            'name',
         ]
     }
 
@@ -32,45 +32,51 @@ class ConsoleDataExtractor:
             async with session.get(self.url) as response:
                 content = await response.read()
                 consoles_data = self.extract_data(content)
-                # Salve os dados na coleção de consoles
+                # Save the extracted data to MongoDB
                 self.save_to_mongodb(consoles_data)
 
-                # Para cada console, chama o GameDataExtractor para processar os jogos
+                # Process the console games
                 await self.process_console_games(consoles_data)
 
                 return consoles_data
 
     def extract_data(self, content):
+        """
+        Extract the console and handheld data from the given HTML content.
+        """
         soup = BeautifulSoup(content, 'html.parser')
 
-        # Encontrar as tabelas para Consoles e Handhelds
+        # Search for the tables containing the console and handheld data
         tables = soup.find_all('table')
         consoles = self.extract_console_links(
-            tables[0], "Console")  # A primeira tabela é de Consoles
+            tables[0], "Console")
         handhelds = self.extract_console_links(
-            tables[1], "Handheld")  # A segunda tabela é de Handhelds
+            tables[1], "Handheld")
 
         return consoles, handhelds
 
     def extract_console_links(self, table, console_type):
+        """
+        Extract the console or handheld links from the given table.
+        """
         links = []
         rows = table.find_all('tr')
         for row in rows:
             cols = row.find_all('td')
-            if len(cols) > 1:  # Verifica se a linha tem mais de uma célula
+            if len(cols) > 1:
                 link_tag = cols[0].find('a')
                 if link_tag:
                     console_name = link_tag.text.strip()
                     console_url = link_tag['href']
 
-                    # Garantir que a URL seja completa (adicionando https://vimm.net)
+                    # Update the console URL if it's a relative URL
                     if console_url.startswith("/"):
                         console_url = f'https://vimm.net{console_url}'
 
-                    # Tentando capturar o ano do console, caso esteja disponível
+                    # Try to extract the year tag if it exists
                     year_tag = cols[1].text.strip() if len(cols) > 1 else None
 
-                    # Criando e salvando o documento do console no MongoDB
+                    # Create a ConsoleDataDocument object and save it to MongoDB
                     console = ConsoleDataDocument(
                         name=console_name,
                         url=console_url,
@@ -87,16 +93,16 @@ class ConsoleDataExtractor:
         """
         Process the games for each console by visiting the console's page and extracting game data.
         """
-        for console_data in consoles_data[0]:  # Consoles são a primeira parte da tupla
+        for console_data in consoles_data[0]:
             console_url = console_data['url']
             console_name = console_data['name']
             print(
                 f"Processing games for console: {console_name} at {console_url}")
 
-            # Extrai os jogos da primeira página de listagem
+            # Extract the games from the console page
             await self.extract_games_from_page(console_url)
 
-            # Depois visita as páginas de A até Z
+            # Extract the games from the console page by letter
             for letter in 'ABCDEFGHIJKLMNOPQRSTUVWXYZ':
                 page_url = f'{console_url}/{letter}'
                 await self.extract_games_from_page(page_url)
@@ -110,12 +116,12 @@ class ConsoleDataExtractor:
                 content = await response.read()
                 soup = BeautifulSoup(content, 'html.parser')
 
-                # Encontrar a lista de jogos na página do console
+                # Search for the game links on the page
                 game_links = self.extract_game_links(soup)
 
                 for game_link in game_links:
                     game_url = f'https://vimm.net{game_link["url"]}'
-                    # Chama o GameDataExtractor para extrair os dados do jogo
+                    # Call the GameDataExtractor to extract the game data
                     game_data_extractor = GameDataExtractor(game_url)
                     await game_data_extractor.request_site()
 
@@ -145,7 +151,7 @@ class ConsoleDataExtractor:
         If a console with the same name already exists, it will be updated with the new data.
         """
         try:
-            # Consoles são a primeira parte da tupla
+            # Consoles If the console already exists in the database, update the data
             for console_data in consoles_data[0]:
                 existing_console = ConsoleDataDocument.objects(
                     name=console_data['name']).first()
@@ -160,8 +166,8 @@ class ConsoleDataExtractor:
                     print(
                         f"Console data saved to MongoDB: {console_data['name']}")
 
-            # Handhelds são a segunda parte da tupla
-            for handheld_data in consoles_data[1]:  # Handhelds
+            # Handhelds If the handheld already exists in the database, update the data
+            for handheld_data in consoles_data[1]:
                 existing_handheld = ConsoleDataDocument.objects(
                     name=handheld_data['name']).first()
 

@@ -4,14 +4,11 @@ from bs4 import BeautifulSoup
 from mongoengine import connect, Document, StringField, FloatField, BooleanField, DictField, NotUniqueError
 from src.config import Config
 
-
-# Configuração para conexão com o banco de dados MongoDB
 config = Config()
 connect('game_database', host=config.database_url)
 
 
 class GameDataDocument(Document):
-    # Campos para representar os dados de jogos
     Region = StringField(required=False)
     Players = StringField(required=False)
     Year = StringField(required=False)
@@ -20,26 +17,25 @@ class GameDataDocument(Document):
     Graphics = FloatField(required=False)
     Sound = FloatField(required=False)
     Gameplay = FloatField(required=False)
-    Format = StringField(required=False)  # Armazenando o formato do download
+    Format = StringField(required=False)
     Version = StringField(required=False)
     GameName = StringField(required=False, unique=True)
     Console = StringField(required=False)
     CanBeDownloaded = BooleanField(required=False, default=False)
     DownloadURL = StringField(required=False)
     DownloadParams = DictField(required=False)
-    # Armazenando o tamanho do download
     DownloadSize = StringField(required=False)
 
     meta = {
         'collection': 'games',
         'indexes': [
-            'GameName',  # Garantir que há um índice único em GameName
+            'GameName',
         ]
     }
 
     def to_dict(self):
         """
-        Converte o documento para um dicionário.
+        Convert the GameDataDocument object to a dictionary
         """
         return {
             "Region": self.Region,
@@ -70,11 +66,14 @@ class GameDataExtractor:
             async with session.get(self.url) as response:
                 content = await response.read()
                 game_data = self.extract_data(content)
-                # Salve os dados no MongoDB
+                # Save the extracted data to MongoDB
                 self.save_to_mongodb(game_data)
                 return game_data
 
     def extract_data(self, content):
+        """
+        Extracts the game data from the given HTML content.
+        """
         soup = BeautifulSoup(content, 'html.parser')
 
         # Extract game name and console name
@@ -112,7 +111,7 @@ class GameDataExtractor:
         download_size = self.extract_download_size(soup)
         download_format = self.extract_download_format(soup)
 
-        # Salve todos os dados no modelo GameDataDocument
+        # Save the extracted data to a GameDataDocument object
         game_data = GameDataDocument(
             Region=table_data.get('Region'),
             Players=table_data.get('Players'),
@@ -127,11 +126,14 @@ class GameDataExtractor:
             DownloadURL=download_url,
             DownloadParams=download_params,
             DownloadSize=download_size,
-            Format=download_format  # Armazenando o formato
+            Format=download_format
         )
         return game_data
 
     def extract_table_data(self, soup):
+        """
+        Extracts the game data from the table in the HTML content.
+        """
         table = soup.find('table', {'class': 'rounded cellpadding1'})
         data = {}
 
@@ -164,7 +166,7 @@ class GameDataExtractor:
                             try:
                                 data[key_map[key]] = float(value.split()[0])
                             except ValueError:
-                                pass  # Handle or log the error as necessary
+                                pass  # TODO: Handle or log the error as necessary
 
         return data
 
@@ -177,7 +179,7 @@ class GameDataExtractor:
             if size_element:
                 return size_element.text.strip()
         except Exception as e:
-            print(f"Erro ao extrair o tamanho do download: {e}")
+            print(f"Error extracting download size: {e}")
         return None
 
     def extract_download_format(self, soup):
@@ -191,7 +193,7 @@ class GameDataExtractor:
                 if selected_option:
                     return selected_option.text.strip()
         except Exception as e:
-            print(f"Erro ao extrair o formato de download: {e}")
+            print(f"Error extracting download format: {e}")
         return None
 
     def save_to_mongodb(self, game_data):
@@ -200,17 +202,17 @@ class GameDataExtractor:
         If a game with the same GameName already exists, it will be updated with the new data.
         """
         try:
-            # Verifica se o GameName já existe
+            # Check if the game already exists in the database
             existing_game = GameDataDocument.objects(
                 GameName=game_data.GameName).first()
 
             if existing_game:
-                # Atualiza o jogo com os novos dados
+                # Update the existing document with the new data
                 existing_game.update(**game_data.to_dict())
                 print(
                     f"Game data for '{game_data.GameName}' updated in MongoDB.")
             else:
-                # Se não existe, cria e salva o documento
+                # If the game does not exist, save the new document
                 game_doc = game_data
                 game_doc.save()
                 print(f"Game data saved to MongoDB: {game_data.GameName}")
