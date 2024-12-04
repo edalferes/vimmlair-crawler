@@ -1,5 +1,6 @@
 import requests
 import os
+import re
 from mongoengine import connect
 from src.config import Config
 from tqdm import tqdm
@@ -53,6 +54,10 @@ class GameDownloadChecker:
             return True
         return False
 
+    def sanitize_filename(self, filename):
+        # Remove or replace problematic characters in the filename
+        return re.sub(r'[<>:"/\\|?*]', '_', filename)
+
     def download_game(self, game):
         """
         Download the game from the download URL.
@@ -65,16 +70,17 @@ class GameDownloadChecker:
                 f"Not possible to download {game['GameName']}. Missing mediaId.")
             return
 
-        filename = f"{game['GameName']}.zip"
+        filename = self.sanitize_filename(
+            f"{game['GameName']}.zip")  # Sanitize the filename
 
-        console_directory = os.path.join('roms', game['Console'])
+        console_directory = os.path.join(config.download_path, game['Console'])
         if not os.path.exists(console_directory):
             os.makedirs(console_directory)
 
         save_path = os.path.join(console_directory, filename)
 
         if os.path.exists(save_path):
-            print(f"Arquivo {filename} já existe. Pulando download.")
+            print(f"File {filename} already exists. Skipping download.")
             return
 
         headers = {
@@ -87,7 +93,7 @@ class GameDownloadChecker:
         }
 
         try:
-            print(f"Iniciando download de {filename}...")
+            print(f"Starting download of {filename}...")
 
             response = requests.get(download_url, headers=headers, stream=True)
             response.raise_for_status()
@@ -95,13 +101,13 @@ class GameDownloadChecker:
             total_size = int(response.headers.get('content-length', 0))
             with open(save_path, 'wb') as file:
                 for chunk in tqdm(response.iter_content(chunk_size=8192),
-                                  desc=f"Donwloading: {filename}",
+                                  desc=f"Downloading: {filename}",
                                   total=total_size // 8192,
                                   unit="KB",
                                   ncols=100):
                     if chunk:
                         file.write(chunk)
 
-            print(f"Download the {filename} completed successfully.")
+            print(f"Download of {filename} completed successfully.")
         except requests.exceptions.RequestException as e:
             print(f"Error downloading {filename}: {e}")

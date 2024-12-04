@@ -5,7 +5,7 @@ from src.game_download_checker import GameDownloadChecker
 async def main():
 
     # Console data this time is a dictionary with the name of the console
-    console_data = {'name': 'PlayStation'}
+    console_data = {'name': 'GameCube'}
 
     # Creating the GameDownloadChecker object
     download_checker = GameDownloadChecker(console_data)
