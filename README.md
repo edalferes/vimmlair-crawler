@@ -167,10 +167,6 @@ docker-compose up -d
 
 You can then access MongoDB Express at `http://localhost:8081` to monitor the MongoDB database and view the stored console and game data.
 
-## License
-
-This project is licensed under the MIT License.
-
 ---
 
 Feel free to contribute or reach out if you have any questions or improvements!
