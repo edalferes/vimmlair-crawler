@@ -4,6 +4,7 @@ import time
 from urllib.parse import urlparse
 from mongoengine import connect
 from src.config import Config
+from tqdm import tqdm  # Adicionando tqdm para a barra de progresso
 
 # Configuração de conexão com o banco
 config = Config()
@@ -81,12 +82,12 @@ class GameDownloadChecker:
         # Obtém o nome do arquivo a partir do nome do jogo
         filename = f"{game['GameName']}.zip"  # Ou o formato que você preferir
 
-        # Diretório onde a ROM será salva
-        save_directory = 'roms'  # Alterar conforme necessário
-        if not os.path.exists(save_directory):
-            os.makedirs(save_directory)
+        # Diretório onde a ROM será salva, agora organizando por console
+        console_directory = os.path.join('roms', game['Console'])
+        if not os.path.exists(console_directory):
+            os.makedirs(console_directory)
 
-        save_path = os.path.join(save_directory, filename)
+        save_path = os.path.join(console_directory, filename)
 
         # Verifica se o arquivo já existe
         if os.path.exists(save_path):
@@ -110,10 +111,16 @@ class GameDownloadChecker:
             response = requests.get(download_url, headers=headers, stream=True)
             response.raise_for_status()  # Verifica se a requisição foi bem-sucedida
 
-            # Salva o arquivo no diretório
+            # Cria a barra de progresso com tqdm
+            total_size = int(response.headers.get('content-length', 0))
             with open(save_path, 'wb') as file:
-                for chunk in response.iter_content(chunk_size=8192):
-                    file.write(chunk)
+                for chunk in tqdm(response.iter_content(chunk_size=8192),
+                                  desc=f"Baixando {filename}",
+                                  total=total_size // 8192,
+                                  unit="KB",
+                                  ncols=100):
+                    if chunk:
+                        file.write(chunk)
 
             print(f"Download de {filename} concluído e salvo em {save_path}.")
 
