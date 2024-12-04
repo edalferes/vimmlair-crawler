@@ -1,3 +1,4 @@
+from src.game_data_extractor import GameDataExtractor
 import aiohttp
 from bs4 import BeautifulSoup
 from mongoengine import Document, StringField, connect
@@ -33,6 +34,10 @@ class ConsoleDataExtractor:
                 consoles_data = self.extract_data(content)
                 # Salve os dados na coleção de consoles
                 self.save_to_mongodb(consoles_data)
+
+                # Para cada console, chama o GameDataExtractor para processar os jogos
+                await self.process_console_games(consoles_data)
+
                 return consoles_data
 
     def extract_data(self, content):
@@ -58,13 +63,17 @@ class ConsoleDataExtractor:
                     console_name = link_tag.text.strip()
                     console_url = link_tag['href']
 
+                    # Garantir que a URL seja completa (adicionando https://vimm.net)
+                    if console_url.startswith("/"):
+                        console_url = f'https://vimm.net{console_url}'
+
                     # Tentando capturar o ano do console, caso esteja disponível
                     year_tag = cols[1].text.strip() if len(cols) > 1 else None
 
                     # Criando e salvando o documento do console no MongoDB
                     console = ConsoleDataDocument(
                         name=console_name,
-                        url=f'https://vimm.net{console_url}',
+                        url=console_url,
                         year=year_tag,
                         type=console_type
                     )
@@ -73,6 +82,62 @@ class ConsoleDataExtractor:
                                  'year': year_tag, 'type': console_type})
 
         return links
+
+    async def process_console_games(self, consoles_data):
+        """
+        Process the games for each console by visiting the console's page and extracting game data.
+        """
+        for console_data in consoles_data[0]:  # Consoles são a primeira parte da tupla
+            console_url = console_data['url']
+            console_name = console_data['name']
+            print(
+                f"Processing games for console: {console_name} at {console_url}")
+
+            # Extrai os jogos da primeira página de listagem
+            await self.extract_games_from_page(console_url)
+
+            # Depois visita as páginas de A até Z
+            for letter in 'ABCDEFGHIJKLMNOPQRSTUVWXYZ':
+                page_url = f'{console_url}/{letter}'
+                await self.extract_games_from_page(page_url)
+
+    async def extract_games_from_page(self, page_url):
+        """
+        Extract the games from the given page URL.
+        """
+        async with aiohttp.ClientSession() as session:
+            async with session.get(page_url) as response:
+                content = await response.read()
+                soup = BeautifulSoup(content, 'html.parser')
+
+                # Encontrar a lista de jogos na página do console
+                game_links = self.extract_game_links(soup)
+
+                for game_link in game_links:
+                    game_url = f'https://vimm.net{game_link["url"]}'
+                    # Chama o GameDataExtractor para extrair os dados do jogo
+                    game_data_extractor = GameDataExtractor(game_url)
+                    await game_data_extractor.request_site()
+
+    def extract_game_links(self, soup):
+        """
+        Extract the links for all games on the console page.
+        """
+        game_links = []
+        game_table = soup.find(
+            'table', {'class': 'rounded centered cellpadding1 hovertable striped'})
+        if game_table:
+            rows = game_table.find_all('tr')
+            for row in rows:
+                cols = row.find_all('td')
+                if len(cols) > 1:
+                    link_tag = cols[0].find('a')
+                    if link_tag:
+                        game_name = link_tag.text.strip()
+                        game_url = link_tag['href']
+                        game_links.append({'name': game_name, 'url': game_url})
+
+        return game_links
 
     def save_to_mongodb(self, consoles_data):
         """
@@ -96,7 +161,7 @@ class ConsoleDataExtractor:
                         f"Console data saved to MongoDB: {console_data['name']}")
 
             # Handhelds são a segunda parte da tupla
-            for handheld_data in consoles_data[1]:
+            for handheld_data in consoles_data[1]:  # Handhelds
                 existing_handheld = ConsoleDataDocument.objects(
                     name=handheld_data['name']).first()
 
