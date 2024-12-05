@@ -27,12 +27,12 @@ services:
     ports:
       - 27017:27017
     volumes:
-      - mongo-data:/data/db
+      - mongo-vimmlair-data:/data/db
     networks:
       - vimmlair-crawler
 
 volumes:
-  mongo-data:
+  mongo-vimmlair-data:
     driver: local
 
 networks:

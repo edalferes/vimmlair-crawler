@@ -1,2 +1,2 @@
 include:
-  - path: docker/docker-compose.mongo.yaml
+  - path: docker-compose/docker-compose.mongo.yaml
