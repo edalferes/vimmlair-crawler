@@ -91,9 +91,11 @@ class ConsoleDataExtractor:
 
     async def process_console_games(self, consoles_data):
         """
-        Process the games for each console by visiting the console's page and extracting game data.
+        Process the games for each console and handheld by visiting the console's or handheld's page
+        and extracting game data.
         """
-        for console_data in consoles_data[0]:
+        # Process consoles
+        for console_data in consoles_data[0]:  # Consoles
             console_url = console_data['url']
             console_name = console_data['name']
             print(
@@ -105,6 +107,21 @@ class ConsoleDataExtractor:
             # Extract the games from the console page by letter
             for letter in 'ABCDEFGHIJKLMNOPQRSTUVWXYZ':
                 page_url = f'{console_url}/{letter}'
+                await self.extract_games_from_page(page_url)
+
+        # Process handhelds
+        for handheld_data in consoles_data[1]:  # Handhelds
+            handheld_url = handheld_data['url']
+            handheld_name = handheld_data['name']
+            print(
+                f"Processing games for handheld: {handheld_name} at {handheld_url}")
+
+            # Extract the games from the handheld page
+            await self.extract_games_from_page(handheld_url)
+
+            # Extract the games from the handheld page by letter
+            for letter in 'ABCDEFGHIJKLMNOPQRSTUVWXYZ':
+                page_url = f'{handheld_url}/{letter}'
                 await self.extract_games_from_page(page_url)
 
     async def extract_games_from_page(self, page_url):
